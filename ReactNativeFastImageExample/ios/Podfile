@@ -25,5 +25,28 @@ target 'ReactNativeFastImageExample' do
 
   post_install do |installer|
     react_native_post_install(installer)
+    
+    # Flipper requires a crude patch to bump up iOS deployment target, or "error: thread-local storage is not supported for the current target"
+    # I'm not aware of any other way to fix this one other than bumping iOS deployment target to match react-native (iOS 11 now)
+    installer.pods_project.targets.each do |target|
+           target.build_configurations.each do |config|
+             config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+             config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+             config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+             config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)', '_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION']
+             
+             case target.name
+             when 'RCT-Folly'
+               config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '9.0'
+             else
+              config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'
+             end
+           end
+           
+           
+        end
+    
   end
+  
+  
 end
