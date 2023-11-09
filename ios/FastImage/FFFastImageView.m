@@ -39,7 +39,7 @@
 
 - (void) setOnFastImageLoad: (RCTDirectEventBlock)onFastImageLoad {
     _onFastImageLoad = onFastImageLoad;
-    if (self.hasCompleted) {
+    if (self.hasCompleted && _onFastImageLoad != NULL) {
         _onFastImageLoad(self.onLoadEvent);
     }
 }
@@ -106,6 +106,13 @@
     }
 }
 
+- (void) setSize: (NSDictionary*)size {
+    if (_resizeSize != size) {
+        _resizeSize = size;
+        _needsReload = YES;
+    }
+}
+
 - (void) setDefaultSource: (UIImage*)defaultSource {
     if (_defaultSource != defaultSource) {
         _defaultSource = defaultSource;
@@ -160,7 +167,16 @@
             }
             return [mutableRequest copy];
         }];
-        SDWebImageContext* context = @{SDWebImageContextDownloadRequestModifier: requestModifier};
+        SDWebImageContext* context;
+        if (_resizeSize != NULL) {
+            double width = [RCTConvert double:[_resizeSize valueForKey:@"width"]];
+            double height = [RCTConvert double:[_resizeSize valueForKey:@"height"]];
+            
+            SDImageResizingTransformer *transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(width, height) scaleMode:SDImageScaleModeAspectFill];
+            context = @{SDWebImageContextDownloadRequestModifier: requestModifier, SDWebImageContextImageTransformer: transformer, SDWebImageContextImageThumbnailPixelSize: [NSValue valueWithCGSize:CGSizeMake(width, height)]};
+        } else {
+            context = @{SDWebImageContextDownloadRequestModifier: requestModifier};
+        }
 
         // Set priority.
         SDWebImageOptions options = SDWebImageRetryFailed | SDWebImageHandleCookies;
@@ -228,6 +244,7 @@
                         weakSelf.onFastImageLoadEnd(@{});
                     }
                 } else {
+                    [[self player] stopPlaying];
                     weakSelf.hasCompleted = YES;
                     [weakSelf sendOnLoad: image];
                     if (weakSelf.onFastImageLoadEnd) {
