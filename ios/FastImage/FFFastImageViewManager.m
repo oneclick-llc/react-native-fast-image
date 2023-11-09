@@ -3,10 +3,35 @@
 
 #import <SDWebImage/SDImageCache.h>
 #import <SDWebImage/SDWebImagePrefetcher.h>
+#import <SDWebImagePhotosPlugin/SDWebImagePhotosPlugin.h>
+#import <SDWebImageVideoCoder/SDWebImageVideoCoder.h>
 
 @implementation FFFastImageViewManager
 
 RCT_EXPORT_MODULE(FastImageView)
+
+
++ (BOOL)requiresMainQueueSetup {
+    return YES;
+}
+
+- (id) init
+{
+    self = [super init];
+
+    // Supports HTTP URL as well as Photos URL globally
+    SDImagePhotosLoader.sharedLoader.requestImageAssetOnly = NO;
+    SDImageLoadersManager.sharedManager.loaders = @[SDWebImageDownloader.sharedDownloader, SDImagePhotosLoader.sharedLoader];
+    // Replace default manager's loader implementation
+    SDWebImageManager.defaultImageLoader = SDImageLoadersManager.sharedManager;
+    [SDImageCodersManager.sharedManager addCoder:SDImageVideoCoder.sharedCoder];
+
+    //  SDImagePhotosLoader.sharedLoader.imageRequestOptions = options;
+    [SDImageCache.sharedImageCache.config setMaxMemoryCost:100 * 1024 * 1024]; // 100 MB of memory
+    [SDImageCache.sharedImageCache.config setMaxDiskSize:200 * 1024 * 1024]; // 200 MB of disk
+
+    return self;
+}
 
 - (FFFastImageView*)view {
   return [[FFFastImageView alloc] init];
@@ -15,6 +40,7 @@ RCT_EXPORT_MODULE(FastImageView)
 RCT_EXPORT_VIEW_PROPERTY(source, FFFastImageSource)
 RCT_EXPORT_VIEW_PROPERTY(defaultSource, UIImage)
 RCT_EXPORT_VIEW_PROPERTY(resizeMode, RCTResizeMode)
+RCT_EXPORT_VIEW_PROPERTY(resizeSize, NSDictionary)
 RCT_EXPORT_VIEW_PROPERTY(onFastImageLoadStart, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onFastImageProgress, RCTDirectEventBlock)
 RCT_EXPORT_VIEW_PROPERTY(onFastImageError, RCTDirectEventBlock)
