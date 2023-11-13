@@ -1,10 +1,8 @@
 #import "FFFastImageViewManager.h"
 #import "FFFastImageView.h"
 
-#import <SDWebImage/SDImageCache.h>
-#import <SDWebImage/SDWebImagePrefetcher.h>
-#import <SDWebImagePhotosPlugin/SDWebImagePhotosPlugin.h>
-#import <SDWebImageVideoCoder/SDWebImageVideoCoder.h>
+static SDImageCache *static_cachePrimary = nil;
+static SDImageCache *static_cacheSecondary = nil;
 
 @implementation FFFastImageViewManager
 
@@ -19,16 +17,28 @@ RCT_EXPORT_MODULE(FastImageView)
 {
     self = [super init];
 
-    // Supports HTTP URL as well as Photos URL globally
+    // Supports Photos URL globally (and HTTP as by default)
     SDImagePhotosLoader.sharedLoader.requestImageAssetOnly = NO;
     SDImageLoadersManager.sharedManager.loaders = @[SDWebImageDownloader.sharedDownloader, SDImagePhotosLoader.sharedLoader];
-    // Replace default manager's loader implementation
+    
+    // Replace default manager's loader implementation with customized loader
     SDWebImageManager.defaultImageLoader = SDImageLoadersManager.sharedManager;
+    
+    // Add video coder to global coders manager
     [SDImageCodersManager.sharedManager addCoder:SDImageVideoCoder.sharedCoder];
-
-    //  SDImagePhotosLoader.sharedLoader.imageRequestOptions = options;
-    [SDImageCache.sharedImageCache.config setMaxMemoryCost:100 * 1024 * 1024]; // 100 MB of memory
-    [SDImageCache.sharedImageCache.config setMaxDiskSize:200 * 1024 * 1024]; // 200 MB of disk
+    
+    // Setup caches
+    static_cachePrimary = [[SDImageCache alloc] initWithNamespace:@"primary"];
+    [static_cachePrimary.config setMaxMemoryCost:100 * 1024 * 1024]; // 100 MB of memory
+    [static_cachePrimary.config setMaxDiskSize:200 * 1024 * 1024]; // 200 MB of disk
+    
+    static_cacheSecondary = [[SDImageCache alloc] initWithNamespace:@"secondary"];
+    [static_cacheSecondary.config setMaxMemoryCost:100 * 1024 * 1024]; // 100 MB of memory
+    [static_cacheSecondary.config setMaxDiskSize:200 * 1024 * 1024]; // 200 MB of disk
+    
+    // [SDImageCachesManager sharedManager] comes with default cache instance which is not configured so we replace the whole list
+    [[SDImageCachesManager sharedManager] setCaches:@[static_cachePrimary, static_cacheSecondary]];
+    SDWebImageManager.defaultImageCache = [SDImageCachesManager sharedManager];
 
     return self;
 }
@@ -74,5 +84,14 @@ RCT_EXPORT_METHOD(clearDiskCache:(RCTPromiseResolveBlock)resolve reject:(RCTProm
         resolve(NULL);
     }];
 }
+
++ (SDImageCache *)primaryCache {
+    return static_cachePrimary;
+}
+
++ (SDImageCache *)secondaryCache {
+    return static_cacheSecondary;
+}
+
 
 @end

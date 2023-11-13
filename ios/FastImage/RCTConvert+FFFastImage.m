@@ -15,6 +15,11 @@ RCT_ENUM_CONVERTER(FFFCacheControl, (@{
                                        @"cacheOnly": @(FFFCacheControlCacheOnly),
                                        }), FFFCacheControlImmutable, integerValue);
 
+RCT_ENUM_CONVERTER(FFFCacheTier, (@{
+                                    @"primary": @(FFFCacheTierPrimary),
+                                    @"secondary": @(FFFCacheTierSecondary),
+                                    }), FFFCacheTierPrimary, integerValue);
+
 + (FFFastImageSource *)FFFastImageSource:(id)json {
     if (!json) {
         return nil;
@@ -25,6 +30,7 @@ RCT_ENUM_CONVERTER(FFFCacheControl, (@{
     
     FFFPriority priority = [self FFFPriority:json[@"priority"]];
     FFFCacheControl cacheControl = [self FFFCacheControl:json[@"cache"]];
+    FFFCacheTier cacheTier = [self FFFCacheTier:json[@"cacheTier"]];
     
     NSDictionary *headers = [self NSDictionary:json[@"headers"]];
     if (headers) {
@@ -43,7 +49,7 @@ RCT_ENUM_CONVERTER(FFFCacheControl, (@{
         }
     }
     
-    FFFastImageSource *imageSource = [[FFFastImageSource alloc] initWithURL:uri priority:priority headers:headers cacheControl:cacheControl];
+    FFFastImageSource *imageSource = [[FFFastImageSource alloc] initWithURL:uri priority:priority headers:headers cacheControl:cacheControl cacheTier:cacheTier];
     
     return imageSource;
 }

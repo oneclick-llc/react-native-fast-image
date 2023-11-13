@@ -1,4 +1,5 @@
 #import "FFFastImageView.h"
+#import "FFFastImageViewManager.h"
 #import <SDWebImage/UIImage+MultiFormat.h>
 #import <SDWebImage/UIView+WebCache.h>
 
@@ -167,15 +168,19 @@
             }
             return [mutableRequest copy];
         }];
-        SDWebImageContext* context;
+        SDWebImageContext* mutableContext = @{}.mutableCopy;
+        
+        [mutableContext setValue:requestModifier forKey:SDWebImageContextDownloadRequestModifier];
+        
         if (_resizeSize != NULL) {
             double width = [RCTConvert double:[_resizeSize valueForKey:@"width"]];
             double height = [RCTConvert double:[_resizeSize valueForKey:@"height"]];
             
-            SDImageResizingTransformer *transformer = [SDImageResizingTransformer transformerWithSize:CGSizeMake(width, height) scaleMode:SDImageScaleModeAspectFill];
-            context = @{SDWebImageContextDownloadRequestModifier: requestModifier, SDWebImageContextImageTransformer: transformer, SDWebImageContextImageThumbnailPixelSize: [NSValue valueWithCGSize:CGSizeMake(width, height)]};
-        } else {
-            context = @{SDWebImageContextDownloadRequestModifier: requestModifier};
+            SDImageResizingTransformer *transformer = [SDImageResizingTransformer 
+                                                       transformerWithSize:CGSizeMake(width, height)
+                                                       scaleMode:SDImageScaleModeAspectFill];
+            [mutableContext setValue:transformer forKey:SDWebImageContextImageTransformer];
+            [mutableContext setValue:[NSValue valueWithCGSize:CGSizeMake(width, height)] forKey:SDWebImageContextImageThumbnailPixelSize];
         }
 
         // Set priority.
@@ -202,6 +207,16 @@
             case FFFCacheControlImmutable:
                 break;
         }
+        
+        switch (_source.cacheTier) {
+            case FFFCacheTierPrimary:
+                [mutableContext setValue:[FFFastImageViewManager primaryCache] forKey:SDWebImageContextImageCache];
+                break;
+                
+            case FFFCacheTierSecondary:
+                [mutableContext setValue:[FFFastImageViewManager secondaryCache] forKey:SDWebImageContextImageCache];
+                break;
+        }
 
         if (self.onFastImageLoadStart) {
             self.onFastImageLoadStart(@{});
@@ -212,6 +227,8 @@
         self.hasCompleted = NO;
         self.hasErrored = NO;
 
+        SDWebImageContext* context = [NSDictionary dictionaryWithDictionary:mutableContext];
+        NSLog(@"[FastImage] reloadImage context: %@", context);
         [self downloadImage: _source options: options context: context];
     } else if (_defaultSource) {
         [self setImage: _defaultSource];
