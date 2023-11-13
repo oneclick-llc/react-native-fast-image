@@ -13,6 +13,6 @@ import com.bumptech.glide.module.AppGlideModule;
 public final class FastImageGlideModule extends AppGlideModule {
   @Override
   public void applyOptions(@NonNull Context context, @NonNull GlideBuilder builder) {
-    builder.setDiskCache(new ExtraDiskCacheAdapter.Factory(context));
+    builder.setDiskCache(new ExtraDiskCacheAdapter.Factory());
   }
 }
