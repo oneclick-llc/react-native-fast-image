@@ -3,6 +3,10 @@
 
 static SDImageCache *static_cachePrimary = nil;
 static SDImageCache *static_cacheSecondary = nil;
+static float static_primaryMemoryCacheSizeMB = 100;
+static float static_secondaryMemoryCacheSizeMB = 100;
+static float static_primaryDiskCacheSizeMB = 200;
+static float static_secondaryDiskCacheSizeMB = 200;
 
 @implementation FFFastImageViewManager
 
@@ -11,6 +15,21 @@ RCT_EXPORT_MODULE(FastImageView)
 
 + (BOOL)requiresMainQueueSetup {
     return YES;
+}
+
++ (void)setup:(NSDictionary*)params {
+    if ([params valueForKey: @"primaryMemoryCacheSizeMB"] != nil) {
+        static_primaryMemoryCacheSizeMB = [[params valueForKey: @"primaryMemoryCacheSizeMB"] floatValue];
+    }
+    if ([params valueForKey: @"secondaryMemoryCacheSizeMB"] != nil) {
+        static_secondaryMemoryCacheSizeMB = [[params valueForKey: @"secondaryMemoryCacheSizeMB"] floatValue];
+    }
+    if ([params valueForKey: @"primaryDiskCacheSizeMB"] != nil) {
+        static_primaryDiskCacheSizeMB = [[params valueForKey: @"primaryDiskCacheSizeMB"] floatValue];
+    }
+    if ([params valueForKey: @"secondaryDiskCacheSizeMB"] != nil) {
+        static_secondaryDiskCacheSizeMB = [[params valueForKey: @"secondaryDiskCacheSizeMB"] floatValue];
+    }
 }
 
 - (id) init
@@ -29,12 +48,12 @@ RCT_EXPORT_MODULE(FastImageView)
     
     // Setup caches
     static_cachePrimary = [[SDImageCache alloc] initWithNamespace:@"primary"];
-    [static_cachePrimary.config setMaxMemoryCost:100 * 1024 * 1024]; // 100 MB of memory
-    [static_cachePrimary.config setMaxDiskSize:200 * 1024 * 1024]; // 200 MB of disk
+    [static_cachePrimary.config setMaxMemoryCost:static_primaryMemoryCacheSizeMB * 1024 * 1024]; // 100 MB of memory
+    [static_cachePrimary.config setMaxDiskSize:static_primaryDiskCacheSizeMB * 1024 * 1024]; // 200 MB of disk
     
     static_cacheSecondary = [[SDImageCache alloc] initWithNamespace:@"secondary"];
-    [static_cacheSecondary.config setMaxMemoryCost:100 * 1024 * 1024]; // 100 MB of memory
-    [static_cacheSecondary.config setMaxDiskSize:200 * 1024 * 1024]; // 200 MB of disk
+    [static_cacheSecondary.config setMaxMemoryCost:static_secondaryMemoryCacheSizeMB * 1024 * 1024]; // 100 MB of memory
+    [static_cacheSecondary.config setMaxDiskSize:static_secondaryDiskCacheSizeMB * 1024 * 1024]; // 200 MB of disk
     
     // [SDImageCachesManager sharedManager] comes with default cache instance which is not configured so we replace the whole list
     [[SDImageCachesManager sharedManager] setCaches:@[static_cachePrimary, static_cacheSecondary]];

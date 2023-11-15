@@ -6,6 +6,7 @@
 #import <SDWebImageVideoCoder/SDWebImageVideoCoder.h>
 
 @interface FFFastImageViewManager : RCTViewManager
-+(SDImageCache*)primaryCache;
-+(SDImageCache*)secondaryCache;
++ (SDImageCache *)primaryCache;
++ (SDImageCache *)secondaryCache;
++ (void)setup:(NSDictionary *)params;
 @end
