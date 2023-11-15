@@ -90,6 +90,7 @@ export interface ImageStyle extends FlexStyle, TransformsStyle, ShadowStyleIOS {
 
 export interface FastImageProps extends AccessibilityProps, ViewProps {
     source?: Source | ImageRequireSource
+    resizeSize?: {width: number; height: number}
     defaultSource?: ImageRequireSource
     resizeMode?: ResizeMode
     fallback?: boolean
