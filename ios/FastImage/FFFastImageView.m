@@ -228,7 +228,7 @@
         self.hasErrored = NO;
 
         SDWebImageContext* context = [NSDictionary dictionaryWithDictionary:mutableContext];
-        NSLog(@"[FastImage] reloadImage context: %@", context);
+        
         [self downloadImage: _source options: options context: context];
     } else if (_defaultSource) {
         [self setImage: _defaultSource];
