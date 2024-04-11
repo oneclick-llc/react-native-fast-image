@@ -45,6 +45,9 @@ RCT_EXPORT_MODULE(FastImageView)
     
     // Add video coder to global coders manager
     [SDImageCodersManager.sharedManager addCoder:SDImageVideoCoder.sharedCoder];
+
+    // Add WebP coder to global coders manager
+    [SDImageCodersManager.sharedManager addCoder:SDImageWebPCoder.sharedCoder];  
     
     // Setup caches
     static_cachePrimary = [[SDImageCache alloc] initWithNamespace:@"primary"];
