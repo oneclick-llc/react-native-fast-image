@@ -1,5 +1,6 @@
 #import "FFFastImageViewManager.h"
 #import "FFFastImageView.h"
+#import <SDWebImageWebPCoder/SDImageWebPCoder.h>
 
 static SDImageCache *static_cachePrimary = nil;
 static SDImageCache *static_cacheSecondary = nil;
