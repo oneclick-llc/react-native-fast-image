@@ -79,7 +79,7 @@
     UIImage *resultImage = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
         CGRect rect = CGRectMake(0, 0, image.size.width, image.size.height);
         [color set];
-        [newImage drawInRect:rect];
+        [image drawInRect:rect];
     }];
 
     return resultImage;
