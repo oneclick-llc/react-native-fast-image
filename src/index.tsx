@@ -90,7 +90,7 @@ export interface ImageStyle extends FlexStyle, TransformsStyle, ShadowStyleIOS {
 
 export interface FastImageProps extends AccessibilityProps, ViewProps {
     source?: Source | ImageRequireSource
-    resizeSize?: {width: number; height: number}
+    resizeSize?: { width: number; height: number }
     defaultSource?: ImageRequireSource
     resizeMode?: ResizeMode
     fallback?: boolean
@@ -186,7 +186,11 @@ function FastImageBase({
         const resolvedSource = Image.resolveAssetSource(cleanedSource)
 
         return (
-            <View style={[styles.imageContainer, style]} ref={forwardedRef}>
+            <View
+                pointerEvents={props.pointerEvents}
+                style={[styles.imageContainer, style]}
+                ref={forwardedRef}
+            >
                 <Image
                     {...props}
                     style={[StyleSheet.absoluteFill, { tintColor }]}
@@ -208,7 +212,11 @@ function FastImageBase({
     const resolvedDefaultSource = resolveDefaultSource(defaultSource)
 
     return (
-        <View style={[styles.imageContainer, style]} ref={forwardedRef}>
+        <View
+            pointerEvents={props.pointerEvents}
+            style={[styles.imageContainer, style]}
+            ref={forwardedRef}
+        >
             <FastImageView
                 {...props}
                 tintColor={tintColor}
