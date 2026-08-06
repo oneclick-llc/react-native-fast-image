@@ -1,6 +1,7 @@
 require 'json'
 
 fabric_enabled = ENV['RCT_NEW_ARCH_ENABLED'] == '1'
+disable_svg = ENV['DISABLE_SVG'] == '1'
 
 Pod::Spec.new do |s|
   package = JSON.parse(File.read(File.join(__dir__, 'package.json')))
@@ -13,7 +14,7 @@ Pod::Spec.new do |s|
   s.license       = "MIT"
   s.framework = 'UIKit'
   s.requires_arc  = true
-  s.source        = { :git => "https://github.com/neclick-llc/react-native-fast-image.git", :tag => "v#{s.version}" }
+  s.source        = { :git => "https://github.com/oneclick-llc/react-native-fast-image.git", :tag => "v#{s.version}" }
   if fabric_enabled
     folly_compiler_flags = '-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_CFG_NO_COROUTINES=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32'
 
@@ -32,12 +33,17 @@ Pod::Spec.new do |s|
     s.dependency 'React-Core'
   end
 
-  s.dependency 'SDWebImage', '~> 5.21.1'  
+  s.dependency 'SDWebImage', '~> 5.21.1'
   s.dependency 'SDWebImageWebPCoder', '~> 0.14.6'
   s.dependency 'SDWebImageAVIFCoder', '~> 0.11.0'
+  if !disable_svg
+    s.dependency 'SDWebImageSVGCoder', '~> 1.7.0'
+  end
   s.dependency 'libavif/libdav1d', '~> 0.11.1'
   s.dependency 'libavif/core', '~> 0.11.1'
-  s.dependency 'SDWebImageVideoCoder', '~> 0.2.0'
+  # SDWebImageVideoCoder убран намеренно: кодек получает на вход скачанный
+  # целиком ролик, а кадр достаёт FFFastImageVideoLoader через AVFoundation,
+  # читая только заголовок и нужные сэмплы.
   s.dependency 'SDWebImagePhotosPlugin', '~> 1.2.1'
 
 end

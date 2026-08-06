@@ -24,6 +24,10 @@ def isNewArchitectureEnabled() {
     return project.hasProperty("newArchEnabled") && project.newArchEnabled == "true"
 }
 
+def isSvgDisabled() {
+    return System.getenv("DISABLE_SVG")?.toBoolean() ?: false
+}
+
 if (isNewArchitectureEnabled()) {
     apply plugin: "com.facebook.react"
 }
@@ -32,11 +36,11 @@ apply plugin: 'com.android.library'
 
 android {
     namespace "com.dylanvann.fastimage"
-    compileSdkVersion safeExtGet('compileSdkVersion', 28)
-    buildToolsVersion safeExtGet('buildToolsVersion', '28.0.3')
+    compileSdkVersion safeExtGet('compileSdkVersion', 31)
+    buildToolsVersion safeExtGet('buildToolsVersion', '31.0.0')
     defaultConfig {
         minSdkVersion safeExtGet('minSdkVersion', 16)
-        targetSdkVersion safeExtGet('targetSdkVersion', 28)
+        targetSdkVersion safeExtGet('targetSdkVersion', 31)
         versionCode 1
         versionName "1.0"
         buildConfigField("boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString())
@@ -45,6 +49,11 @@ android {
     sourceSets {
         main {
             java {
+                if (!isSvgDisabled()) {
+                    srcDirs += [
+                        "src/svg",
+                    ]
+                }
                 if (isNewArchitectureEnabled()) {
                     srcDirs += [
                     "src/newarch",
@@ -94,4 +103,9 @@ dependencies {
     implementation "com.github.zjupure:webpdecoder:2.7.${glideVersion}"
     api "com.github.bumptech.glide:disklrucache:${glideVersion}"
     annotationProcessor "com.github.bumptech.glide:compiler:${glideVersion}"
+    // TODO: Make this configurable as it increases apk size by 900KB
+    implementation 'com.github.penfeizhou.android.animation:glide-plugin:3.0.5'
+    if (!isSvgDisabled()) {
+        implementation "com.caverock:androidsvg-aar:1.4"
+    }
 }

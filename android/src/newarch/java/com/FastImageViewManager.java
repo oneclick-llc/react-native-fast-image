@@ -9,7 +9,6 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.graphics.PorterDuff;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -100,10 +99,22 @@ class FastImageViewManager extends SimpleViewManager<FastImageViewWithUrl> imple
         final FastImageViewWithUrl.ScaleType scaleType = FastImageViewConverter.getScaleType(resizeMode);
         view.setScaleType(scaleType);
     }
+    @Override
+    @ReactProp(name = "blurRadius")
+    public void setBlurRadius(FastImageViewWithUrl view, int blurRadius) {
+        view.setBlurRadius(blurRadius);
+    }
 
     @Override
+    @ReactProp(name = "transition")
+    public void setTransition(FastImageViewWithUrl view, @Nullable String transition) {
+        view.setTransition(transition);
+    }
+
+    @Override
+    @ReactProp(name = "resizeSize")
     public void setResizeSize(FastImageViewWithUrl view, @androidx.annotation.Nullable ReadableMap value) {
-        Log.d("FastImageViewManager", "resizeSize is not supported on Android");
+        view.setResizeSize(value);
     }
 
     @Override

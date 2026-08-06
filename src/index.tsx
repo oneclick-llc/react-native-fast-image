@@ -21,8 +21,8 @@ import {
 const isFabricEnabled = (global as any)?.nativeFabricUIManager != null
 const isTurboModuleEnabled = (global as any).__turboModuleProxy != null
 const FastImageViewModule = isTurboModuleEnabled
-    ? require('./NativeFastImageView').default
-    : NativeModules.FastImageView
+    ? require('./NativeFastImageViewModule').default
+    : NativeModules.FastImageViewModule
 
 const FastImageView = isFabricEnabled
     ? require('./FastImageViewNativeComponent').default
@@ -43,6 +43,13 @@ const priority = {
     low: 'low',
     normal: 'normal',
     high: 'high',
+} as const
+
+export type Transition = 'fade' | 'none'
+
+const transition = {
+    fade: 'fade',
+    none: 'none',
 } as const
 
 type Cache = 'immutable' | 'web' | 'cacheOnly'
@@ -69,6 +76,18 @@ export type Source = {
     priority?: Priority
     cache?: Cache
     cacheTier?: CacheTier
+    /**
+     * The uri points at a video: show a frame from it.
+     *
+     * Only needed when the uri does not look like a video — CDN links often
+     * carry no file extension at all, and then the only side that knows the
+     * content type is the caller, who got it from the server along with the
+     * mime. A `…/clip.mp4` link is recognised without this flag.
+     *
+     * The frame is read natively, by ranges: the container header and the
+     * samples around the requested time, not the whole file.
+     */
+    isVideo?: boolean
 }
 
 export interface OnLoadEvent {
@@ -82,6 +101,12 @@ export interface OnProgressEvent {
     nativeEvent: {
         loaded: number
         total: number
+    }
+}
+
+export interface OnErrorEvent {
+    nativeEvent: {
+        error: string
     }
 }
 
@@ -105,6 +130,7 @@ export interface FastImageProps extends AccessibilityProps, ViewProps {
     defaultSource?: ImageRequireSource
     resizeMode?: ResizeMode
     fallback?: boolean
+    transition?: Transition
 
     onLoadStart?(): void
 
@@ -112,7 +138,7 @@ export interface FastImageProps extends AccessibilityProps, ViewProps {
 
     onLoad?(event: OnLoadEvent): void
 
-    onError?(): void
+    onError?(event: OnErrorEvent): void
 
     onLoadEnd?(): void
 
@@ -138,6 +164,13 @@ export interface FastImageProps extends AccessibilityProps, ViewProps {
      */
 
     tintColor?: ColorValue
+
+    /**
+     * BlurRadius
+     *
+     * The blur radius of the blur filter added to the image.
+     */
+    blurRadius?: number
 
     /**
      * A unique identifier for this element to be used in UI Automation testing scripts.
@@ -177,6 +210,7 @@ function FastImageBase({
     source,
     defaultSource,
     tintColor,
+    blurRadius,
     onLoadStart,
     onProgress,
     onLoad,
@@ -185,8 +219,8 @@ function FastImageBase({
     style,
     fallback,
     children,
-
-    resizeMode = 'cover',
+    transition: transitionProp,
+    resizeMode: resizeModeProp = 'cover',
     forwardedRef,
     ...props
 }: FastImageProps & { forwardedRef: React.Ref<any> }) {
@@ -194,6 +228,9 @@ function FastImageBase({
         const cleanedSource = { ...(source as any) }
         delete cleanedSource.cache
         delete cleanedSource.cacheTier
+        // Обычная Image кадр из видео не достанет — в fallback признак только
+        // сбил бы её с толку.
+        delete cleanedSource.isVideo
         const resolvedSource = Image.resolveAssetSource(cleanedSource)
 
         return (
@@ -212,7 +249,8 @@ function FastImageBase({
                     onLoad={onLoad as any}
                     onError={onError}
                     onLoadEnd={onLoadEnd}
-                    resizeMode={resizeMode}
+                    resizeMode={resizeModeProp}
+                    blurRadius={blurRadius}
                 />
                 {children}
             </View>
@@ -260,7 +298,9 @@ function FastImageBase({
                 onFastImageLoad={onLoad}
                 onFastImageError={onError}
                 onFastImageLoadEnd={onLoadEnd}
-                resizeMode={resizeMode}
+                resizeMode={resizeModeProp}
+                transition={transitionProp}
+                blurRadius={blurRadius}
             />
             {children}
         </View>
@@ -282,6 +322,7 @@ export interface FastImageStaticProperties {
     priority: typeof priority
     cacheControl: typeof cacheControl
     cacheTier: typeof cacheTier
+    transition: typeof transition
     preload: (sources: Source[]) => void
     clearMemoryCache: () => Promise<void>
     clearDiskCache: () => Promise<void>
@@ -297,6 +338,8 @@ FastImage.cacheControl = cacheControl
 FastImage.cacheTier = cacheTier
 
 FastImage.priority = priority
+
+FastImage.transition = transition
 
 FastImage.preload = (sources: Source[]) => FastImageViewModule.preload(sources)
 

@@ -7,6 +7,7 @@
                     headers:(NSDictionary *)headers
                cacheControl:(FFFCacheControl)cacheControl
                   cacheTier:(FFFCacheTier)cacheTier
+                    isVideo:(BOOL)isVideo
 {
     self = [super init];
     if (self) {
@@ -15,6 +16,7 @@
         _headers = headers;
         _cacheControl = cacheControl;
         _cacheTier = cacheTier;
+        _isVideo = isVideo;
     }
     return self;
 }

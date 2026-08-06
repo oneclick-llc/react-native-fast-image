@@ -1,5 +1,5 @@
 import React from 'react';
-import Base from 'react-native-vector-icons/Ionicons';
+import {Text} from 'react-native';
 
 interface IconProps {
   size?: number;
@@ -7,13 +7,24 @@ interface IconProps {
   color: string;
 }
 
-export function Icon({size, name, color}: IconProps) {
+/**
+ * Значки вкладок эмодзи, а не шрифтом.
+ *
+ * Раньше здесь стоял react-native-vector-icons: ради трёх картинок в таб-баре
+ * он тянет шрифты, их регистрацию в Info.plist и свою сборку под каждую
+ * платформу. Пример существует, чтобы проверять картинки, — лишняя нативная
+ * зависимость в нём только мешает поднять его на новой версии RN.
+ */
+const GLYPHS: Record<string, string> = {
+  'information-circle-outline': 'ℹ️',
+  'image-outline': '🖼️',
+  'images-outline': '🗂️',
+};
+
+export function Icon({size = 24, name, color}: IconProps) {
   return (
-    <Base
-      name={name}
-      size={size}
-      style={{width: size, height: size}}
-      color={color}
-    />
+    <Text style={{fontSize: size, lineHeight: size + 2, color}}>
+      {GLYPHS[name] ?? '•'}
+    </Text>
   );
 }

@@ -30,6 +30,8 @@ public class ExtraDiskCacheAdapter implements DiskCache {
     private static final Pattern SOURCE_PATTERN = Pattern.compile("sourceKey=([^,]+),");
     private static final Pattern SOURCE_CACHE_TIER_PATTERN = Pattern.compile("#" + TIER_PREFIX + "-(.*)");
     private static final Map<String, DiskCache> tiers = new HashMap<>();
+    /** Нужен, чтобы завести недостающий тир самим. Ставится при сборке Glide. */
+    private static Context appContext;
 
     @Override
     public File get(Key key) {
@@ -55,9 +57,30 @@ public class ExtraDiskCacheAdapter implements DiskCache {
 //    String tierKey = key instanceof ResourceCacheKey
         String tierKey = this.extractCacheTierFromKey(key);
         DiskCache cache = ExtraDiskCacheAdapter.tiers.get(tierKey);
-        if (cache == null)
-            throw new Error("Image cache tor tier '" + tierKey + "' wasn't initialized");
-        return cache;
+        if (cache != null) {
+            return cache;
+        }
+        // Тир не заведён — заводим сам, обычного размера.
+        //
+        // Раньше здесь бросался Error, и это означало, что в приложении, которое
+        // не позвало init() из своего Application, НЕ ГРУЗИЛАСЬ НИ ОДНА
+        // картинка: тир идёт первым же шагом любой загрузки. Тиры — тонкая
+        // настройка, а не условие работоспособности; кто хочет свои размеры,
+        // по-прежнему зовёт init() и получает их.
+        synchronized (ExtraDiskCacheAdapter.tiers) {
+            cache = ExtraDiskCacheAdapter.tiers.get(tierKey);
+            if (cache != null) {
+                return cache;
+            }
+            Context context = ExtraDiskCacheAdapter.appContext;
+            if (context == null) {
+                throw new Error("Image cache for tier '" + tierKey + "' wasn't initialized");
+            }
+            DiskCache created = new InternalCacheDiskCacheFactory(
+                    context, tierKey, DiskCache.Factory.DEFAULT_DISK_CACHE_SIZE).build();
+            ExtraDiskCacheAdapter.tiers.put(tierKey, created);
+            return created;
+        }
     }
 
     @NonNull
@@ -76,6 +99,7 @@ public class ExtraDiskCacheAdapter implements DiskCache {
     }
 
     public static void init(Context context, Map<String, Integer> tiers) {
+        ExtraDiskCacheAdapter.appContext = context.getApplicationContext();
         tiers.forEach((tier, size) -> {
             if (!tier.equals("")) {
                 InternalCacheDiskCacheFactory factory =
@@ -89,6 +113,15 @@ public class ExtraDiskCacheAdapter implements DiskCache {
      * Default factory for {@link com.dylanvann.fastimage.ExtraDiskCacheAdapter}.
      */
     public static final class Factory implements DiskCache.Factory {
+        public Factory(Context context) {
+            // Контекст приезжает отсюда, а не из init(): Glide собирается
+            // раньше, чем приложение успеет что-либо настроить, и к этому
+            // моменту недостающий тир уже нужно уметь завести.
+            if (ExtraDiskCacheAdapter.appContext == null) {
+                ExtraDiskCacheAdapter.appContext = context.getApplicationContext();
+            }
+        }
+
         @Override
         public DiskCache build() {
             return new ExtraDiskCacheAdapter();

@@ -1,9 +1,11 @@
 #import "FFFastImageView.h"
 #import "FFFastImageViewManager.h"
+#import "FFFastImageBlurTransformation.h"
+#import <CoreImage/CoreImage.h>
 #import <SDWebImage/UIImage+MultiFormat.h>
 #import <SDWebImage/UIView+WebCache.h>
-// #import <SDWebImageAVIFCoder/SDImageAVIFCoder.h>
-// #import <SDWebImageWebPCoder/SDImageWebPCoder.h>
+// Кодеки здесь не подключаются: их регистрирует [FFFastImageHelper setup:]
+// один раз на приложение — см. ниже commonInitUtils.
 #import "FFFastImageHelper.h"
 
 @interface FFFastImageView ()
@@ -16,10 +18,13 @@
 
 @property(nonatomic, strong) NSDictionary* onLoadEvent;
 
+@property(nonatomic, strong) NSDictionary *lastErrorEvent;
+
 @end
 
 @implementation FFFastImageView
 
+static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
 
 
 - (void)onLoadEventSend:(UIImage *)image {
@@ -84,32 +89,53 @@
 #endif
 }
 
-- (void)onErrorEvent {
+- (void)onErrorEvent:(NSError *)error {
+
+    NSString *msg = error.localizedDescription ?: kFFFastImageDefaultErrorMessage;
+    NSDictionary *event = @{ @"error": msg };
+    self.lastErrorEvent = event;
+
     #ifdef RCT_NEW_ARCH_ENABLED
         if (_eventEmitter != nullptr) {
             std::dynamic_pointer_cast<const facebook::react::FastImageViewEventEmitter>(_eventEmitter)
-            ->onFastImageError(facebook::react::FastImageViewEventEmitter::OnFastImageError{});
+            ->onFastImageError(facebook::react::FastImageViewEventEmitter::OnFastImageError{.error = static_cast<std::string>([error.localizedDescription UTF8String])});
         }
     #else
         if (self.onFastImageError) {
-            self.onFastImageError(@{});
+            self.onFastImageError(@{
+                    @"error": error.localizedDescription ?: kFFFastImageDefaultErrorMessage
+                }
+            );
         }
     #endif
 }
 
 
-
-
-
-- (id) init {
-    self = [super init];
+- (void)commonInitUtils {
     self.resizeMode = RCTResizeModeCover;
     self.clipsToBounds = YES;
-//    if (self) {
-        // we call it in FFFastViewManager
-//       [[SDImageCodersManager sharedManager] addCoder:[SDImageAVIFCoder sharedCoder]];
-//       [[SDImageCodersManager sharedManager] addCoder:[SDImageWebPCoder sharedCoder]];
-//    }
+    // Кодеки и загрузчик кадров — один раз на приложение, а не на каждую вью
+    // (апстрим регистрирует их прямо здесь, и они копятся в общем списке по
+    // разу на картинку). Размеры кэшей и тиры по-прежнему за
+    // [FFFastImageHelper setup:] из AppDelegate.
+    [FFFastImageHelper registerDefaults];
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+//     Called on new arch from FFFastImageComponentView
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self commonInitUtils];
+    }
+    return self;
+}
+
+- (id) init {
+//     Called on old arch from FFFastImageViewManager
+    self = [super init];
+    if (self) {
+        [self commonInitUtils];
+    }
     return self;
 }
 
@@ -137,7 +163,7 @@
 - (void) setOnFastImageError: (RCTDirectEventBlock)onFastImageError {
     _onFastImageError = onFastImageError;
     if (self.hasErrored && _onFastImageError) {
-        _onFastImageError(@{});
+        _onFastImageError(self.lastErrorEvent ?: @{ @"error": kFFFastImageDefaultErrorMessage});
     }
 }
 
@@ -163,6 +189,13 @@
     }
 }
 
+- (void)setBlurRadius:(CGFloat)blurRadius {
+    if (_blurRadius != blurRadius) {
+        _blurRadius = blurRadius;
+        _needsReload = YES;
+    }
+}
+
 - (UIImage*) makeImage: (UIImage*)image withTint: (UIColor*)color {
     UIImage* newImage = [image imageWithRenderingMode: UIImageRenderingModeAlwaysTemplate];
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:image.size];
@@ -174,6 +207,12 @@
 }
 
 - (void) setImage: (UIImage*)image {
+    if (_blurRadius && _blurRadius > 0) {
+        FFFastImageBlurTransformation *transformation =
+            [[FFFastImageBlurTransformation alloc] initWithRadius:_blurRadius];
+        image = [transformation transform:image];
+    }
+
     if (self.imageColor != nil) {
         super.image = [self makeImage: image withTint: self.imageColor];
     } else {
@@ -253,7 +292,15 @@
             [mutableContext setValue:transformer forKey:SDWebImageContextImageTransformer];
             [mutableContext setValue:[NSValue valueWithCGSize:CGSizeMake(width, height)] forKey:SDWebImageContextImageThumbnailPixelSize];
         }
-        
+
+        // Ссылка на видео: кадр достанет FFFastImageVideoLoader. По расширению
+        // он узнаёт видео сам, а признак нужен для ссылок без расширения —
+        // тогда вид содержимого знает только вызывающий.
+        if (_source.isVideo) {
+            [mutableContext setValue:@YES forKey:FFFastImageContextIsVideo];
+        }
+
+
         // Set priority.
         SDWebImageOptions options = SDWebImageRetryFailed | SDWebImageHandleCookies;
         switch (_source.priority) {
@@ -304,6 +351,10 @@
 
 - (void) downloadImage: (FFFastImageSource*)source options: (SDWebImageOptions)options context: (SDWebImageContext*)context {
     __weak FFFastImageView *weakSelf = self; // Always use a weak reference to self in blocks
+    // transition: default to none; enable fade if requested
+    if (self.transition && [self.transition isEqualToString:@"fade"]) {
+        self.sd_imageTransition = SDWebImageTransition.fadeTransition;
+    }
     [self sd_setImageWithURL: _source.url
             placeholderImage: _defaultSource
                      options: options
@@ -316,7 +367,7 @@
                     NSURL* _Nullable imageURL) {
                 if (error) {
                     weakSelf.hasErrored = YES;
-                    [weakSelf onErrorEvent];
+                    [weakSelf onErrorEvent:error];
 
                     [weakSelf onLoadEndEvent];
                 } else {

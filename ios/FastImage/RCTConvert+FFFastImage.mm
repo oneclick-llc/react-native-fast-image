@@ -50,7 +50,9 @@ RCT_ENUM_CONVERTER(FFFCacheTier, (@{
         }
     }
     
-    FFFastImageSource *imageSource = [[FFFastImageSource alloc] initWithURL:uri priority:priority headers:headers cacheControl:cacheControl cacheTier:cacheTier];
+    BOOL isVideo = [self BOOL:json[@"isVideo"]];
+
+    FFFastImageSource *imageSource = [[FFFastImageSource alloc] initWithURL:uri priority:priority headers:headers cacheControl:cacheControl cacheTier:cacheTier isVideo:isVideo];
     
     return imageSource;
 }

@@ -32,12 +32,22 @@ typedef NS_ENUM(NSInteger, FFFCacheTier) {
 @property (nonatomic) FFFCacheControl cacheControl;
 // cache tier
 @property (nonatomic) FFFCacheTier cacheTier;
+/**
+ * Ссылка ведёт на видео — показать нужно кадр из него.
+ *
+ * Нужно там, где по ссылке этого не видно: CDN часто отдаёт файлы без
+ * расширения вовсе, а вид содержимого вызывающий и так знает — он получил его
+ * от сервера вместе с mime. Со ссылкой вида `…/clip.mp4` признак не нужен,
+ * загрузчик узнаёт видео сам.
+ */
+@property (nonatomic) BOOL isVideo;
 
 
 - (instancetype)initWithURL:(NSURL *)url
                    priority:(FFFPriority)priority
                     headers:(NSDictionary *)headers
                cacheControl:(FFFCacheControl)cacheControl
-                  cacheTier:(FFFCacheTier)cacheTier;
+                  cacheTier:(FFFCacheTier)cacheTier
+                    isVideo:(BOOL)isVideo;
 
 @end

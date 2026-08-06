@@ -19,7 +19,7 @@ class FastImageViewModuleImplementation {
     this.reactContext = reactContext;
     }
 
-    public static final String REACT_CLASS = "FastImageView";
+    public static final String REACT_CLASS = "FastImageViewModule";
 
     private Activity getCurrentActivity(){
         return reactContext.getCurrentActivity();
@@ -50,7 +50,7 @@ class FastImageViewModuleImplementation {
                                     imageSource.isBase64Resource() ? imageSource.getSource() :
                                     imageSource.isResource() ? imageSource.getUri() : imageSource.getGlideUrl()
                             )
-                            .apply(FastImageViewConverter.getOptions(activity, imageSource, source))
+                            .apply(FastImageViewConverter.getOptions(activity, imageSource, source, null))
                             .preload();
                 }
             }

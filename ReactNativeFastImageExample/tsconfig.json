@@ -1,10 +1,20 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json",
+  "extends": "@react-native/typescript-config",
   "compilerOptions": {
-    "moduleResolution": "Node",
+    "types": ["jest"],
+    // Пакет берётся исходниками из родительской папки — тем же путём, что у
+    // Metro (watchFolders) и babel (module-resolver). Без этого tsc не находит
+    // модуль, хотя приложение собирается и работает.
+    "baseUrl": ".",
     "paths": {
-      "react-native-fast-image": ["../src/index"]
+      "react-native-fast-image": ["../src/index"],
+      // Одна копия типов на оба дерева: у пакета в devDependencies свой
+      // @types/react, и без этого один и тот же React приезжает двумя разными
+      // типами — «Property '$$typeof' is missing» на ровном месте.
+      "react": ["./node_modules/@types/react"],
+      "react-native": ["./node_modules/react-native"]
     }
   },
-  "include": ["./src", "__tests__"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["**/node_modules", "**/Pods"]
 }

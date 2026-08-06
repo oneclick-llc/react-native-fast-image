@@ -3,6 +3,8 @@ import {ScrollView, StatusBar, StyleSheet, Text, View} from 'react-native';
 import Section from './Section';
 import FeatureText from './FeatureText';
 import StatusBarUnderlay, {STATUS_BAR_HEIGHT} from './StatusBarUnderlay';
+import {ResizeSizeExample} from './ResizeSizeExample';
+import {VideoFrameExample} from './VideoFrameExample';
 import {PriorityExample} from './PriorityExample';
 import {GifExample} from './GifExample';
 import {BorderRadiusExample} from './BorderRadiusExample';
@@ -10,9 +12,12 @@ import {ProgressExample} from './ProgressExample';
 import {PreloadExample} from './PreloadExample';
 import {ResizeModeExample} from './ResizeModeExample';
 import {TintColorExample} from './TintColorExample';
+import {BlurRadiusExample} from './BlurRadiusExample';
 import {LocalImagesExample} from './LocalImagesExample';
 import {AutoSizeExample} from './AutoSizeExample';
 import {AvifExample} from './AvifExample';
+import {SvgExample} from './SvgExample';
+import {TransitionExample} from './TransitionExample';
 
 const FastImageExample = () => (
   <View style={styles.container}>
@@ -29,13 +34,18 @@ const FastImageExample = () => (
           <Text style={styles.titleText}>🚩 FastImage</Text>
           <FeatureText text="Tap images to reload examples." />
         </Section>
+        <VideoFrameExample />
+        <ResizeSizeExample />
         <PriorityExample />
         <GifExample />
+        <SvgExample />
         <BorderRadiusExample />
         <ProgressExample />
         <PreloadExample />
         <ResizeModeExample />
+        <TransitionExample />
         <TintColorExample />
+        <BlurRadiusExample />
         <LocalImagesExample />
         <AutoSizeExample />
         <AvifExample />

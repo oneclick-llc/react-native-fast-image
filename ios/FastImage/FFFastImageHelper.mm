@@ -9,6 +9,43 @@ static float static_secondaryDiskCacheSizeMB = 200;
 
 @implementation FFFastImageHelper
 
+/**
+ * Кодеки и загрузчик кадров — то, без чего библиотека не отрабатывает свои же
+ * обещания.
+ *
+ * Раньше это лежало внутри `setup:`, а `setup:` зовёт хост из своего
+ * AppDelegate. Приложение, которое его не позвало, тихо теряло AVIF, WebP и
+ * SVG — то есть половину того, ради чего в подспеке стоят их поды. Ловится это
+ * только глазами и только на нужной картинке.
+ *
+ * Теперь регистрация отдельная и происходит сама, при создании первой вью.
+ * `setup:` по-прежнему нужен — но только ради размеров кэшей и тиров.
+ */
++ (void)registerDefaults {
+    static dispatch_once_t token;
+    dispatch_once(&token, ^{
+        // Порядок значим: менеджер спрашивает загрузчики С КОНЦА и берёт
+        // первый, который согласился. Видео должно попасть в свой загрузчик
+        // раньше, чем качалка возьмёт ссылку себе и потянет ролик целиком.
+        NSMutableArray<id<SDImageLoader>> *loaders =
+            [SDImageLoadersManager.sharedManager.loaders mutableCopy] ?: [NSMutableArray new];
+        if (![loaders containsObject:FFFastImageVideoLoader.sharedLoader]) {
+            [loaders addObject:FFFastImageVideoLoader.sharedLoader];
+        }
+        SDImageLoadersManager.sharedManager.loaders = loaders;
+        SDWebImageManager.defaultImageLoader = SDImageLoadersManager.sharedManager;
+
+        // SDWebImageVideoCoder среди кодеков больше нет. Кадр из видео достаёт
+        // FFFastImageVideoLoader — читая файл диапазонами, а не получая на вход
+        // скачанный целиком ролик, как устроен любой кодек.
+        [[SDImageCodersManager sharedManager] addCoder:[SDImageAVIFCoder sharedCoder]];
+        [[SDImageCodersManager sharedManager] addCoder:[SDImageWebPCoder sharedCoder]];
+#if !defined(DISABLE_SVG) || DISABLE_SVG == 0
+        [[SDImageCodersManager sharedManager] addCoder:[SDImageSVGCoder sharedCoder]];
+#endif
+    });
+}
+
 + (void)setup:(NSDictionary*)params {
     NSLog(@"FFFastImageViewManager setup called");
 
@@ -25,18 +62,22 @@ static float static_secondaryDiskCacheSizeMB = 200;
         static_secondaryDiskCacheSizeMB = [[params valueForKey: @"secondaryDiskCacheSizeMB"] floatValue];
     }
     
-    // Supports Photos URL globally (and HTTP as by default)
+    [self registerDefaults];
+
+    // Ссылки Photos глобально (и HTTP, как по умолчанию). Этот загрузчик
+    // остаётся здесь: без `setup:` библиотека фотоплёнку и не обещает.
     SDImagePhotosLoader.sharedLoader.requestImageAssetOnly = NO;
-    SDImageLoadersManager.sharedManager.loaders = @[SDWebImageDownloader.sharedDownloader, SDImagePhotosLoader.sharedLoader];
+    NSMutableArray<id<SDImageLoader>> *loaders =
+        [SDImageLoadersManager.sharedManager.loaders mutableCopy] ?: [NSMutableArray new];
+    if (![loaders containsObject:SDImagePhotosLoader.sharedLoader]) {
+        // Перед загрузчиком видео: у ссылок Photos своя схема, они не спорят.
+        [loaders insertObject:SDImagePhotosLoader.sharedLoader atIndex:loaders.count > 0 ? loaders.count - 1 : 0];
+    }
+    SDImageLoadersManager.sharedManager.loaders = loaders;
 
     // Replace default manager's loader implementation with customized loader
     SDWebImageManager.defaultImageLoader = SDImageLoadersManager.sharedManager;
-    
-    // Add custom coders to global coders manager
-    [[SDImageCodersManager sharedManager] addCoder:[SDImageVideoCoder sharedCoder]];
-    [[SDImageCodersManager sharedManager] addCoder:[SDImageAVIFCoder sharedCoder]];
-    [[SDImageCodersManager sharedManager] addCoder:[SDImageWebPCoder sharedCoder]];
-    
+
     // Setup caches
     // Sizes can be altered by calling [FFFastImageViewManager setup] from your AppDelegate
     static_cachePrimary = [[SDImageCache alloc] initWithNamespace:@"primary"];

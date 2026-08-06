@@ -87,6 +87,7 @@ using namespace facebook::react;
             break;
     }
     imageSourcePropsDict[@"priority"] = priority;
+    imageSourcePropsDict[@"isVideo"] = @(newViewProps.source.isVideo);
     FFFastImageSource *imageSource = [RCTConvert FFFastImageSource:imageSourcePropsDict];
 
     [fastImageView setSource: imageSource];
@@ -111,6 +112,20 @@ using namespace facebook::react;
     [fastImageView setResizeMode:resizeMode];
 
     fastImageView.imageColor = RCTUIColorFromSharedColor(newViewProps.tintColor);
+
+    fastImageView.blurRadius = newViewProps.blurRadius;
+
+    NSString *transition = @"none";
+    switch (newViewProps.transition) {
+        case FastImageViewTransition::Fade:
+            transition = @"fade";
+            break;
+        case FastImageViewTransition::None:
+        default:
+            transition = @"none";
+            break;
+    }
+    fastImageView.transition = transition;
 
     [super updateProps:props oldProps:oldProps];
     // this method decides whether to reload the image based on changed props

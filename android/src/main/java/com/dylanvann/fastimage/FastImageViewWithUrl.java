@@ -1,7 +1,5 @@
 package com.dylanvann.fastimage;
 
-import static com.dylanvann.fastimage.FastImageRequestListener.REACT_ON_ERROR_EVENT;
-
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
@@ -14,6 +12,7 @@ import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.RequestManager;
 import com.bumptech.glide.load.model.GlideUrl;
 import com.bumptech.glide.request.Request;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
 import com.bumptech.glide.load.resource.gif.GifDrawable;
 import com.facebook.react.bridge.ReadableMap;
 import com.dylanvann.fastimage.events.FastImageErrorEvent;
@@ -24,8 +23,11 @@ import com.facebook.react.uimanager.events.EventDispatcher;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import android.os.Build;
 import android.util.Log;
 
 class FastImageViewWithUrl extends AppCompatImageView {
@@ -33,7 +35,13 @@ class FastImageViewWithUrl extends AppCompatImageView {
     private boolean mNeedsReload = false;
     private ReadableMap mSource = null;
     private Drawable mDefaultSource = null;
+    private int mBlurRadius = 0;
+    private int mBlurRadiusPrevious = 0;
+    // В какой размер (в пикселях) распаковывать картинку. Ноль — как раньше.
+    private int mResizeWidth = 0;
+    private int mResizeHeight = 0;
     public GlideUrl glideUrl;
+    private String mTransition = "none"; // "none" | "fade"
 
     public FastImageViewWithUrl(Context context) {
         super(context);
@@ -49,13 +57,75 @@ class FastImageViewWithUrl extends AppCompatImageView {
         mDefaultSource = source;
     }
 
+    public void setBlurRadius(@Nullable Integer blurRadius) {
+        mNeedsReload = true;
+        mBlurRadiusPrevious = mBlurRadius;
+        mBlurRadius = blurRadius == null ? 0 : blurRadius;
+    }
+
+    /**
+     * Размер декодирования в пикселях.
+     *
+     * Glide и сам умеет считать размер по вью, в которую грузит, но полагаться
+     * на это нельзя: вью может быть ещё не измерена в момент запроса, а
+     * `wrap_content` он трактует как «во весь экран». Явный `override` убирает
+     * это гадание — снимок 5000×5000 распаковывается в те пиксели, что реально
+     * видны, а не в 95 МБ битмапа.
+     */
+    public void setResizeSize(@Nullable ReadableMap resizeSize) {
+        mNeedsReload = true;
+        if (resizeSize == null) {
+            mResizeWidth = 0;
+            mResizeHeight = 0;
+            return;
+        }
+        mResizeWidth = resizeSize.hasKey("width")
+                ? (int) Math.round(resizeSize.getDouble("width"))
+                : 0;
+        mResizeHeight = resizeSize.hasKey("height")
+                ? (int) Math.round(resizeSize.getDouble("height"))
+                : 0;
+    }
+
+    public void setTransition(@Nullable String transition) {
+        mNeedsReload = true;
+        if (transition == null) {
+            mTransition = "none";
+        } else {
+            mTransition = transition;
+        }
+    }
+
     private boolean isNullOrEmpty(final String url) {
         return url == null || url.trim().isEmpty();
     }
 
+    /**
+     * Модель для Glide — обычная, а «это видео» запоминается рядом.
+     *
+     * По расширению загрузчик кадров узнаёт видео сам; признак нужен для
+     * ссылок без расширения. Менять из-за него саму модель нельзя: она входит
+     * в ключ запроса, и тогда одна и та же ссылка с признаком и без него
+     * читалась бы дважды.
+     */
+    @Nullable
+    private Object sourceForLoad(@Nullable FastImageSource imageSource) {
+        if (imageSource == null) {
+            return null;
+        }
+        boolean isVideo = mSource != null
+                && mSource.hasKey("isVideo")
+                && !mSource.isNull("isVideo")
+                && mSource.getBoolean("isVideo");
+        if (isVideo) {
+            FastImageVideoUrl.remember(imageSource.getUri().toString());
+        }
+        return imageSource.getSourceForLoad();
+    }
+
     @SuppressLint("CheckResult")
     public void onAfterUpdate(
-            @NonNull FastImageViewManager manager, 
+            @NonNull FastImageViewManager manager,
             @Nullable RequestManager requestManager,
             @NonNull Map<String, List<FastImageViewWithUrl>> viewsForUrlsMap) {
         if (!mNeedsReload)
@@ -144,30 +214,29 @@ class FastImageViewWithUrl extends AppCompatImageView {
 
         if (requestManager != null) {
             RequestBuilder<? extends Drawable> builder;
+            Map<String, Object> builderOptions = new HashMap<>();
+            builderOptions.put("view", this);
+            builderOptions.put("blurRadius", mBlurRadius);
+            builderOptions.put("blurRadiusShouldClean", mBlurRadiusPrevious > 0 && mBlurRadius <= 0);
 
             try {
-                String extension = FastImageUrlUtils.getFileExtensionFromUrl(imageSource.getUri().toString());
+                builder = requestManager
+                        .load(sourceForLoad(imageSource))
+                        .apply(FastImageViewConverter
+                                .getOptions(context, imageSource, mSource, builderOptions)
+                                .placeholder(mDefaultSource) // show until loaded
+                                .fallback(mDefaultSource)); // null will not be treated as error
 
-                if ("gif".equals(extension)) {
-                    builder = requestManager
-                            .asGif()
-                            .load(imageSource == null ? null : imageSource.getSourceForLoad())
-                            .apply(FastImageViewConverter
-                                    .getOptions(context, imageSource, mSource)
-                                    .placeholder(mDefaultSource)
-                                    .fallback(mDefaultSource))
-                            .listener(new FastImageRequestListener<GifDrawable>(key));
-                } else {
-                    builder = requestManager
-                            .load(imageSource == null ? null : imageSource.getSourceForLoad())
-                            .apply(FastImageViewConverter
-                                    .getOptions(context, imageSource, mSource)
-                                    .placeholder(mDefaultSource) // show until loaded
-                                    .fallback(mDefaultSource)); // null will not be treated as error
+                if (mResizeWidth > 0 && mResizeHeight > 0) {
+                    builder = builder.override(mResizeWidth, mResizeHeight);
                 }
 
                 if (key != null) {
                     builder.listener(new FastImageRequestListener(key));
+                }
+
+                if ("fade".equals(mTransition)) {
+                    builder = builder.transition(DrawableTransitionOptions.withCrossFade());
                 }
 
                 builder.into(this);
