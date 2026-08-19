@@ -3,6 +3,7 @@ package com.dylanvann.fastimage;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.NonNull;
@@ -96,6 +97,25 @@ class FastImageViewWithUrl extends AppCompatImageView {
         }
     }
 
+    /**
+     * Renders the JS-side source for diagnostics without dereferencing anything nullable.
+     */
+    private static String describeSource(@Nullable ReadableMap source) {
+        if (source == null) {
+            return "source=null";
+        }
+        // Diagnostics must never throw: the callers are already error paths, and
+        // getString() raises if the value is not actually a string.
+        try {
+            String uri = source.hasKey("uri") ? source.getString("uri") : null;
+            String tier = source.hasKey("cacheTier") ? source.getString("cacheTier") : null;
+            return "uri=" + (uri == null ? "null" : "'" + uri + "'")
+                    + ", cacheTier=" + (tier == null ? "null" : "'" + tier + "'");
+        } catch (Exception e) {
+            return "source=<undescribable: " + e.getClass().getSimpleName() + ">";
+        }
+    }
+
     private boolean isNullOrEmpty(final String url) {
         return url == null || url.trim().isEmpty();
     }
@@ -117,8 +137,9 @@ class FastImageViewWithUrl extends AppCompatImageView {
                 && mSource.hasKey("isVideo")
                 && !mSource.isNull("isVideo")
                 && mSource.getBoolean("isVideo");
-        if (isVideo) {
-            FastImageVideoUrl.remember(imageSource.getUri().toString());
+        Uri sourceUri = imageSource.getUri();
+        if (isVideo && sourceUri != null) {
+            FastImageVideoUrl.remember(sourceUri.toString());
         }
         return imageSource.getSourceForLoad();
     }
@@ -159,7 +180,14 @@ class FastImageViewWithUrl extends AppCompatImageView {
         //final GlideUrl glideUrl = FastImageViewConverter.getGlideUrl(view.getContext(), mSource);
         final FastImageSource imageSource = FastImageViewConverter.getImageSource(getContext(), mSource);
 
-        if (imageSource != null && imageSource.getUri().toString().length() == 0) {
+        // `getUri()` is nullable: FastImageSource#resolveResourceUri yields null when the
+        // source has no scheme and matches neither a drawable nor a raw resource. Treat that
+        // exactly like the long-standing empty-URI case instead of dereferencing it.
+        final Uri imageSourceUri = imageSource == null ? null : imageSource.getUri();
+        if (imageSource != null && (imageSourceUri == null || imageSourceUri.toString().length() == 0)) {
+            if (imageSourceUri == null) {
+                Log.w(TAG, "Unusable image source (no resolvable URI): " + describeSource(mSource));
+            }
             ThemedReactContext context = (ThemedReactContext) getContext();
             EventDispatcher dispatcher = UIManagerHelper.getEventDispatcherForReactTag(context, getId());
             int surfaceId = UIManagerHelper.getSurfaceId(this);
@@ -242,7 +270,7 @@ class FastImageViewWithUrl extends AppCompatImageView {
                 builder.into(this);
             } catch (Exception e) {
                 Log.e(TAG, String.format("Error detecting image type for URI: %s. Exception: %s",
-                imageSource != null ? imageSource.getUri().toString() : "null", e.getMessage()), e);
+                describeSource(mSource), e.getMessage()), e);
             }
         }
     }

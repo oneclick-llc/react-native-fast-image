@@ -163,6 +163,7 @@ public class FastImageSource {
         return mUri != null && FastImageSource.isContentUri(mUri);
     }
 
+    @Nullable
     public Object getSourceForLoad() {
         if (isContentUri() || isBase64Resource()) {
             return getSource();
@@ -175,6 +176,11 @@ public class FastImageSource {
         return getGlideUrl();
     }
 
+    /**
+     * May be null: {@link #resolveResourceUri} returns null when the source has
+     * no scheme and matches neither a drawable nor a raw resource.
+     */
+    @Nullable
     public Uri getUri() {
         return mUri;
     }
@@ -183,8 +189,16 @@ public class FastImageSource {
         return mHeaders;
     }
 
+    /**
+     * Null when the source has no usable URI, mirroring {@link #getUri()}.
+     */
+    @Nullable
     public GlideUrl getGlideUrl() {
-        return new GlideUrl(getUri().toString(), getHeaders());
+        Uri uri = getUri();
+        if (uri == null) {
+            return null;
+        }
+        return new GlideUrl(uri.toString(), getHeaders());
     }
 
     public String getSource() {

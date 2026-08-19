@@ -34,8 +34,23 @@ class FastImageViewModuleImplementation {
                 for (int i = 0; i < sources.size(); i++) {
                     final ReadableMap source = sources.getMap(i);
                     final FastImageSource imageSource = FastImageViewConverter.getImageSource(activity, source);
-                    if (source == null || !source.hasKey("uri") || source.getString("uri").isEmpty()) {
+                    final String sourceUri = source == null || !source.hasKey("uri")
+                            ? null
+                            : source.getString("uri");
+                    if (sourceUri == null || sourceUri.isEmpty()) {
                             System.out.println("Source is null or URI is empty");
+                            continue;
+                          }
+                    // getUri()/getGlideUrl() are nullable when the source resolves to no
+                    // usable URI; skip rather than handing Glide a null model.
+                    final Object loadModel = imageSource == null
+                            ? null
+                            : imageSource.isBase64Resource()
+                                    ? imageSource.getSource()
+                                    : imageSource.isResource()
+                                            ? imageSource.getUri()
+                                            : imageSource.getGlideUrl();
+                    if (loadModel == null) {
                             continue;
                           }
                     Glide
@@ -46,10 +61,7 @@ class FastImageViewModuleImplementation {
                             //    - res:/
                             //    - android.resource://
                             //    - data:image/png;base64
-                            .load(
-                                    imageSource.isBase64Resource() ? imageSource.getSource() :
-                                    imageSource.isResource() ? imageSource.getUri() : imageSource.getGlideUrl()
-                            )
+                            .load(loadModel)
                             .apply(FastImageViewConverter.getOptions(activity, imageSource, source, null))
                             .preload();
                 }
