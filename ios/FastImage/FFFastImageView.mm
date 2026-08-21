@@ -26,6 +26,10 @@
 
 static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
 
+// Cap of the animated-image frame buffer, in bytes. `0` (the SDWebImage default)
+// lets the player size the buffer from device memory — up to `min(total * 0.2,
+// free * 0.6)`, which is hundreds of megabytes per animated view.
+static const NSUInteger kFFFastImageMaxBufferSize = 8 * 1024 * 1024;
 
 // Nil-tolerant value comparison: `[nil isEqual:x]` is NO, so a plain `isEqual:`
 // would report two absent values as different.
@@ -120,6 +124,8 @@ static BOOL FFFastImageObjectsEqual(id lhs, id rhs) {
 - (void)commonInitUtils {
     self.resizeMode = RCTResizeModeCover;
     self.clipsToBounds = YES;
+    // Bound the animated frame buffer instead of letting it grow with free memory.
+    self.maxBufferSize = kFFFastImageMaxBufferSize;
     // Кодеки и загрузчик кадров — один раз на приложение, а не на каждую вью
     // (апстрим регистрирует их прямо здесь, и они копятся в общем списке по
     // разу на картинку). Размеры кэшей и тиры по-прежнему за
