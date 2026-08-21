@@ -50,4 +50,13 @@ typedef NS_ENUM(NSInteger, FFFCacheTier) {
                   cacheTier:(FFFCacheTier)cacheTier
                     isVideo:(BOOL)isVideo;
 
+/**
+ * Value equality over every field that affects the load.
+ *
+ * The new architecture builds a fresh source object on every props update, so a
+ * pointer comparison sees a change on every React re-render and restarts the
+ * whole SDWebImage load cycle for an image that did not change.
+ */
+- (BOOL)isEqualToFastImageSource:(FFFastImageSource *)other;
+
 @end

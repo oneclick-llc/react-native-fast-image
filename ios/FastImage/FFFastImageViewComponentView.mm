@@ -154,6 +154,11 @@ using namespace facebook::react;
 - (void)prepareForRecycle
 {
     [super prepareForRecycle];
+    // A recycled view starts from a brand new FFFastImageView, so its `source` is
+    // nil again. `-[FFFastImageView setSource:]` compares sources by value, and
+    // that comparison is only safe while this holds: a view that kept a `source`
+    // but dropped its image would skip the reload for a value-equal source and
+    // stay blank. Whatever replaces this line must reset `source` and `image`.
     fastImageView = [[FFFastImageView alloc] initWithFrame:self.bounds];
     self.contentView = fastImageView;
 }

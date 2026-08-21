@@ -27,6 +27,12 @@
 static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
 
 
+// Nil-tolerant value comparison: `[nil isEqual:x]` is NO, so a plain `isEqual:`
+// would report two absent values as different.
+static BOOL FFFastImageObjectsEqual(id lhs, id rhs) {
+    return lhs == rhs || [lhs isEqual:rhs];
+}
+
 - (void)onLoadEventSend:(UIImage *)image {
     NSDictionary* onLoadEvent = @{
             @"width": [NSNumber numberWithDouble: image.size.width],
@@ -224,15 +230,18 @@ static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
     [self onLoadEventSend:image];
 }
 
+// The setters below compare by value, not by pointer: the new architecture
+// rebuilds these props from scratch on every props update, so a pointer
+// comparison would restart the load on every React re-render.
 - (void) setSource: (FFFastImageSource*)source {
-    if (_source != source) {
+    if (!FFFastImageObjectsEqual(_source, source)) {
         _source = source;
         _needsReload = YES;
     }
 }
 
 - (void) setResizeSize: (NSDictionary*)resizeSize {
-    if (_resizeSize != resizeSize) {
+    if (!FFFastImageObjectsEqual(_resizeSize, resizeSize)) {
         _resizeSize = resizeSize;
         _needsReload = YES;
     }
@@ -240,7 +249,9 @@ static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
 
 
 - (void) setDefaultSource: (UIImage*)defaultSource {
-    if (_defaultSource != defaultSource) {
+    // UIImage has no value equality, so this stays an identity comparison — it is
+    // only made nil-tolerant for consistency with the setters above.
+    if (!FFFastImageObjectsEqual(_defaultSource, defaultSource)) {
         _defaultSource = defaultSource;
         _needsReload = YES;
     }

@@ -21,4 +21,38 @@
     return self;
 }
 
+- (BOOL)isEqualToFastImageSource:(FFFastImageSource *)other {
+    if (other == nil) {
+        return NO;
+    }
+    if (other == self) {
+        return YES;
+    }
+    if (_priority != other.priority ||
+        _cacheControl != other.cacheControl ||
+        _cacheTier != other.cacheTier ||
+        _isVideo != other.isVideo) {
+        return NO;
+    }
+    if (_url != other.url && ![_url isEqual:other.url]) {
+        return NO;
+    }
+    if (_headers != other.headers && ![_headers isEqual:other.headers]) {
+        return NO;
+    }
+    return YES;
+}
+
+- (BOOL)isEqual:(id)object {
+    if (![object isKindOfClass:[FFFastImageSource class]]) {
+        return NO;
+    }
+    return [self isEqualToFastImageSource:(FFFastImageSource *)object];
+}
+
+- (NSUInteger)hash {
+    return _url.hash ^ _headers.hash ^ (NSUInteger)_priority ^ ((NSUInteger)_cacheControl << 2) ^
+           ((NSUInteger)_cacheTier << 4) ^ ((NSUInteger)_isVideo << 6);
+}
+
 @end
