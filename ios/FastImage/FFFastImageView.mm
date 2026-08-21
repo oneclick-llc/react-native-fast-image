@@ -31,6 +31,37 @@ static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
 // free * 0.6)`, which is hundreds of megabytes per animated view.
 static const NSUInteger kFFFastImageMaxBufferSize = 8 * 1024 * 1024;
 
+// Decode boxes are rounded UP to a multiple of this many pixels.
+//
+// The requested thumbnail size is part of SDWebImage's cache key (it appends a
+// `…-Thumbnail(WxH)` segment), so handing the decoder the raw layout size mints
+// a separate cache entry — and a separate decode — for every pixel of
+// incidental variance: per device scale, per container width, per re-layout of
+// the same image. Coarse buckets collapse all of those onto one key per URL per
+// size class.
+//
+// Rounding up (never down) is what makes it safe: SDWebImage aspect-fits into
+// the box (`preserveAspectRatio` defaults to YES), so a larger box never
+// distorts and never blurs — at worst it decodes slightly more pixels than the
+// view strictly needs. Each dimension is bucketed independently for the same
+// reason.
+//
+// Kept in step with the JS-side helper (`look-box/utils/imageDecodeSize.utils.ts`),
+// which quantizes with the same step and the same rounding direction, and with
+// the native waterfall cell's own bucketing.
+static const CGFloat kFFFastImageDecodeSizeBucketPx = 128;
+
+static CGFloat FFFastImageBucketedPixels(CGFloat pixels) {
+    if (!(pixels > 0)) {
+        return kFFFastImageDecodeSizeBucketPx;
+    }
+    CGFloat buckets = ceil(pixels / kFFFastImageDecodeSizeBucketPx);
+    if (buckets < 1) {
+        buckets = 1;
+    }
+    return buckets * kFFFastImageDecodeSizeBucketPx;
+}
+
 // Nil-tolerant value comparison: `[nil isEqual:x]` is NO, so a plain `isEqual:`
 // would report two absent values as different.
 static BOOL FFFastImageObjectsEqual(id lhs, id rhs) {
@@ -303,11 +334,22 @@ static BOOL FFFastImageObjectsEqual(id lhs, id rhs) {
             double width = [RCTConvert double:[_resizeSize valueForKey:@"width"]];
             double height = [RCTConvert double:[_resizeSize valueForKey:@"height"]];
             
-            SDImageResizingTransformer *transformer = [SDImageResizingTransformer
-                                                       transformerWithSize:CGSizeMake(width, height)
-                                                       scaleMode:SDImageScaleModeAspectFill];
-            [mutableContext setValue:transformer forKey:SDWebImageContextImageTransformer];
-            [mutableContext setValue:[NSValue valueWithCGSize:CGSizeMake(width, height)] forKey:SDWebImageContextImageThumbnailPixelSize];
+            // `resizeSize` comes from JS in points; the thumbnail context is
+            // specified in pixels, so it has to be scaled for the screen.
+            //
+            // Bucketed before it enters the context, because the value ends up
+            // in the cache key — see `FFFastImageBucketedPixels` above.
+            CGFloat scale = UIScreen.mainScreen.scale;
+            CGSize pixelSize = CGSizeMake(FFFastImageBucketedPixels(width * scale),
+                                          FFFastImageBucketedPixels(height * scale));
+
+            // Thumbnail only, deliberately without an SDImageResizingTransformer:
+            // the thumbnail is produced by the decoder at the requested size, while
+            // a transformer decodes the image at full pixel size first and then
+            // resizes it into a second bitmap — twice the peak memory for the same
+            // result — and it appends its own segment to the cache key on top of
+            // the thumbnail one.
+            [mutableContext setValue:[NSValue valueWithCGSize:pixelSize] forKey:SDWebImageContextImageThumbnailPixelSize];
         }
 
         // Ссылка на видео: кадр достанет FFFastImageVideoLoader. По расширению
