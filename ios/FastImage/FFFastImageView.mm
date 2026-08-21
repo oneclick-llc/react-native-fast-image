@@ -360,7 +360,10 @@ static NSString * const kFFFastImageDefaultErrorMessage = @"Load failed";
                      options: options
                      context: context
                     progress: ^(NSInteger receivedSize, NSInteger expectedSize, NSURL* _Nullable targetURL) {
-        [self onProgressEvent:receivedSize expectedSize:expectedSize];
+        // weakSelf, not self: a strong capture here makes the view own the running
+        // operation that owns this block, so a discarded view — and the image it
+        // decoded — is never released.
+        [weakSelf onProgressEvent:receivedSize expectedSize:expectedSize];
                     } completed: ^(UIImage* _Nullable image,
                     NSError* _Nullable error,
                     SDImageCacheType cacheType,
