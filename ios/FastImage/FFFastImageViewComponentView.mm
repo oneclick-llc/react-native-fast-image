@@ -88,6 +88,7 @@ using namespace facebook::react;
     }
     imageSourcePropsDict[@"priority"] = priority;
     imageSourcePropsDict[@"isVideo"] = @(newViewProps.source.isVideo);
+    imageSourcePropsDict[@"mimeType"] = RCTNSStringFromString(newViewProps.source.mimeType);
     FFFastImageSource *imageSource = [RCTConvert FFFastImageSource:imageSourcePropsDict];
 
     [fastImageView setSource: imageSource];

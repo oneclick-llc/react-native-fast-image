@@ -53,6 +53,7 @@ RCT_ENUM_CONVERTER(FFFCacheTier, (@{
     BOOL isVideo = [self BOOL:json[@"isVideo"]];
 
     FFFastImageSource *imageSource = [[FFFastImageSource alloc] initWithURL:uri priority:priority headers:headers cacheControl:cacheControl cacheTier:cacheTier isVideo:isVideo];
+    imageSource.mimeType = [self NSString:json[@"mimeType"]];
     
     return imageSource;
 }

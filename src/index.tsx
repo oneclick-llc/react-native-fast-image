@@ -88,6 +88,8 @@ export type Source = {
      * samples around the requested time, not the whole file.
      */
     isVideo?: boolean
+    /** Concrete video MIME from metadata; iOS 17+ overrides an incorrect CDN type. */
+    mimeType?: string
 }
 
 export interface OnLoadEvent {

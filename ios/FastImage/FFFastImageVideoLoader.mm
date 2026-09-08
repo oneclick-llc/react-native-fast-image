@@ -1,10 +1,12 @@
 #import "FFFastImageVideoLoader.h"
+#import "FFFastImageVideoMIME.h"
 
 #import <AVFoundation/AVFoundation.h>
 #import <UIKit/UIKit.h>
 
 SDWebImageContextOption const FFFastImageContextIsVideo = @"ffFastImageIsVideo";
 SDWebImageContextOption const FFFastImageContextVideoFrameTimeMs = @"ffFastImageVideoFrameTimeMs";
+SDWebImageContextOption const FFFastImageContextVideoMIMEType = @"ffFastImageVideoMIMEType";
 
 /**
  * Расширения, которые читает AVFoundation.
@@ -158,8 +160,9 @@ static dispatch_queue_t InFlightQueue(void) {
     NSValue *thumbnailSize = context[SDWebImageContextImageThumbnailPixelSize];
     CGSize maximumSize = thumbnailSize != nil ? thumbnailSize.CGSizeValue : CGSizeZero;
     double timeMs = [context[FFFastImageContextVideoFrameTimeMs] doubleValue];
-    NSString *key = [NSString stringWithFormat:@"%@|%.0fx%.0f|%.0f",
-                     url.absoluteString, maximumSize.width, maximumSize.height, timeMs];
+    NSString *mime = FFFastImageVideoMIME(context[FFFastImageContextVideoMIMEType]);
+    NSString *key = [NSString stringWithFormat:@"%@|%.0fx%.0f|%.0f|%@",
+                     url.absoluteString, maximumSize.width, maximumSize.height, timeMs, mime ?: @""];
 
     SDImageLoaderCompletedBlock waiter = [completedBlock copy];
     operation.key = key;
@@ -183,7 +186,7 @@ static dispatch_queue_t InFlightQueue(void) {
         return operation;
     }
 
-    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:FFFastImageVideoAssetOptions(url, mime)];
     AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
     // Снятое портретом видео лежит в файле повёрнутым, а поворот записан в
     // дорожке. Без этого кадр вышел бы боком.

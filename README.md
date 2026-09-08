@@ -152,6 +152,23 @@ If using [ProGuard](https://www.guardsquare.com/proguard), add these rules to `a
 | `FastImage.clearMemoryCache(): Promise<void>`   | Clears all images from the memory cache.                                                                 |
 | `FastImage.clearDiskCache(): Promise<void>`     | Clears all images from the disk cache.                                                                   |
 
+## Remote video format hints
+
+For a remote video whose response MIME is generic or incorrect, pass the
+concrete video MIME from your API alongside the existing `isVideo` flag:
+
+```tsx
+<FastImage source={{ uri: file.url, isVideo: true, mimeType: file.meta.mime }} />
+```
+
+On iOS 17+, the video-frame loader uses `AVURLAssetOverrideMIMETypeKey`.
+The original URL and range-based loading are preserved. Empty, generic,
+wildcard and non-video hints retain automatic detection; local files and
+Photos posters are not overridden. MIME participates in source equality and
+video request/cache identity, so correcting metadata triggers a new load.
+Android continues using its existing decoder. Callers omitting the optional
+property retain the previous behavior.
+
 ## 👥 Contributing
 
 We welcome contributions to improve FastImage! Please check out our [contributing guide](CONTRIBUTING.md) for guidelines on how to proceed.

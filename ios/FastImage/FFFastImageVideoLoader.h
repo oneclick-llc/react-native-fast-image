@@ -42,5 +42,6 @@ FOUNDATION_EXPORT SDWebImageContextOption const FFFastImageContextIsVideo;
 
 /** Позиция кадра в миллисекундах. По умолчанию — самое начало. */
 FOUNDATION_EXPORT SDWebImageContextOption const FFFastImageContextVideoFrameTimeMs;
+FOUNDATION_EXPORT SDWebImageContextOption const FFFastImageContextVideoMIMEType;
 
 NS_ASSUME_NONNULL_END

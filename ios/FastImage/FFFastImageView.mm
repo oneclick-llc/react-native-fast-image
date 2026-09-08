@@ -7,6 +7,8 @@
 // Кодеки здесь не подключаются: их регистрирует [FFFastImageHelper setup:]
 // один раз на приложение — см. ниже commonInitUtils.
 #import "FFFastImageHelper.h"
+#import "FFFastImageVideoMIME.h"
+#import <SDWebImage/SDWebImageCacheKeyFilter.h>
 
 @interface FFFastImageView ()
 
@@ -328,7 +330,7 @@ static BOOL FFFastImageObjectsEqual(id lhs, id rhs) {
             }
             return [mutableRequest copy];
         }];
-        SDWebImageContext* mutableContext = @{SDWebImageContextDownloadRequestModifier: requestModifier}.mutableCopy;
+        NSMutableDictionary<SDWebImageContextOption, id> *mutableContext = @{SDWebImageContextDownloadRequestModifier: requestModifier}.mutableCopy;
 
         if (_resizeSize != NULL) {
             double width = [RCTConvert double:[_resizeSize valueForKey:@"width"]];
@@ -357,8 +359,25 @@ static BOOL FFFastImageObjectsEqual(id lhs, id rhs) {
         // тогда вид содержимого знает только вызывающий.
         if (_source.isVideo) {
             [mutableContext setValue:@YES forKey:FFFastImageContextIsVideo];
+            // SDImageLoadersManager 5.21.1 drops the context when selecting the
+            // loader in requestImageWithURL. Pick our loader explicitly so an
+            // extensionless video cannot fall through to the image downloader.
+            [mutableContext setValue:FFFastImageVideoLoader.sharedLoader
+                              forKey:SDWebImageContextImageLoader];
         }
 
+
+        NSString *videoMIME = FFFastImageVideoMIME(_source.mimeType);
+        if (videoMIME && (_source.isVideo || [FFFastImageVideoLoader isVideoURL:_source.url]) &&
+            FFFastImageVideoAssetOptions(_source.url, videoMIME) != nil) {
+            mutableContext[FFFastImageContextVideoMIMEType] = videoMIME;
+            // A corrected hint must not reuse a request/cache entry decoded
+            // under a different format. The actual signed URL stays untouched.
+            mutableContext[SDWebImageContextCacheKeyFilter] =
+                [SDWebImageCacheKeyFilter cacheKeyFilterWithBlock:^NSString *(NSURL *url) {
+                    return [NSString stringWithFormat:@"%@|ff-video-mime:%@", url.absoluteString, videoMIME];
+                }];
+        }
 
         // Set priority.
         SDWebImageOptions options = SDWebImageRetryFailed | SDWebImageHandleCookies;

@@ -41,6 +41,8 @@ typedef NS_ENUM(NSInteger, FFFCacheTier) {
  * загрузчик узнаёт видео сам.
  */
 @property (nonatomic) BOOL isVideo;
+// Optional decoder hint, not an HTTP request header.
+@property (nonatomic, copy, nullable) NSString *mimeType;
 
 
 - (instancetype)initWithURL:(NSURL *)url

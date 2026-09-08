@@ -40,6 +40,9 @@
     if (_headers != other.headers && ![_headers isEqual:other.headers]) {
         return NO;
     }
+    if (_mimeType != other.mimeType && ![_mimeType isEqual:other.mimeType]) {
+        return NO;
+    }
     return YES;
 }
 
@@ -52,7 +55,7 @@
 
 - (NSUInteger)hash {
     return _url.hash ^ _headers.hash ^ (NSUInteger)_priority ^ ((NSUInteger)_cacheControl << 2) ^
-           ((NSUInteger)_cacheTier << 4) ^ ((NSUInteger)_isVideo << 6);
+           ((NSUInteger)_cacheTier << 4) ^ ((NSUInteger)_isVideo << 6) ^ _mimeType.hash;
 }
 
 @end

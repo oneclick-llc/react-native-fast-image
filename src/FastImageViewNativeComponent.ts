@@ -18,6 +18,7 @@ type FastImageSource = Readonly<{
     priority?: Priority
     cache?: CacheControl
     isVideo?: boolean
+    mimeType?: string
 }>
 
 type OnErrorEvent = Readonly<{
