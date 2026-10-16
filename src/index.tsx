@@ -328,6 +328,21 @@ export interface FastImageStaticProperties {
     preload: (sources: Source[]) => void
     clearMemoryCache: () => Promise<void>
     clearDiskCache: () => Promise<void>
+    /**
+     * Absolute filesystem path (no `file://` scheme) of the original downloaded
+     * bytes of `source.uri`, taken from the same disk cache — same key, same
+     * cache tier — the image view uses for that source.
+     *
+     * When the image is not cached yet it is loaded into that cache first,
+     * through the library's own loader; a `cacheOnly` source rejects instead.
+     * A local file uri resolves to its own path. Rejects for a source without a
+     * uri, a video source (its cache holds a decoded frame, not the file), any
+     * other scheme, and a load failure.
+     *
+     * The file belongs to the cache and can be evicted at any time: copy it
+     * before keeping it. It may carry no file extension.
+     */
+    getCachedFile: (source: Source) => Promise<string>
 }
 
 const FastImage: React.ComponentType<FastImageProps> &
@@ -348,6 +363,9 @@ FastImage.preload = (sources: Source[]) => FastImageViewModule.preload(sources)
 FastImage.clearMemoryCache = () => FastImageViewModule.clearMemoryCache()
 
 FastImage.clearDiskCache = () => FastImageViewModule.clearDiskCache()
+
+FastImage.getCachedFile = (source: Source) =>
+    FastImageViewModule.getCachedFile(source)
 
 const styles = StyleSheet.create({
     imageContainer: {

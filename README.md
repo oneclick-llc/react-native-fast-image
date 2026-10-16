@@ -151,6 +151,7 @@ If using [ProGuard](https://www.guardsquare.com/proguard), add these rules to `a
 | `FastImage.preload(sources: object[])`   | Preloads images for faster display when they are rendered. <br> Example: `FastImage.preload([{ uri: "https://unsplash.it/400/400?image=1" }])`. |
 | `FastImage.clearMemoryCache(): Promise<void>`   | Clears all images from the memory cache.                                                                 |
 | `FastImage.clearDiskCache(): Promise<void>`     | Clears all images from the disk cache.                                                                   |
+| `FastImage.getCachedFile(source: object): Promise<string>` | Resolves the absolute path (no `file://` scheme) of the original downloaded bytes of `source.uri` in the disk cache the image view uses for that source (same key, same `cacheTier`). Loads the image into that cache first when it is not there yet (a `cacheOnly` source rejects instead); on iOS a display load of the same URL still in flight is joined, on Android a concurrent fetch may be repeated. A local file uri resolves to its own path. Rejects for a missing uri, a video source, any other scheme, and a load failure. The file belongs to the cache and may be evicted at any time — copy it before keeping it; it may have no file extension. <br> Example: `const path = await FastImage.getCachedFile({ uri: "https://unsplash.it/400/400?image=1" })`. |
 
 ## Remote video format hints
 

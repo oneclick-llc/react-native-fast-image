@@ -43,4 +43,9 @@ class FastImageViewModule extends NativeFastImageViewModuleSpec {
     public void clearDiskCache(Promise promise) {
         impl.clearDiskCache(promise);
     }
+
+    @Override
+    public void getCachedFile(final ReadableMap source, final Promise promise) {
+        impl.getCachedFile(source, promise);
+    }
 }

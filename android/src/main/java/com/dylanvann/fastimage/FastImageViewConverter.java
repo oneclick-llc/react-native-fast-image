@@ -165,11 +165,11 @@ class FastImageViewConverter {
         return options;
     }
 
-    private static FastImageCacheControl getCacheControl(ReadableMap source) {
+    static FastImageCacheControl getCacheControl(ReadableMap source) {
         return getValueFromSource("cache", "immutable", FAST_IMAGE_CACHE_CONTROL_MAP, source);
     }
 
-    private static Priority getPriority(ReadableMap source) {
+    static Priority getPriority(ReadableMap source) {
         return getValueFromSource("priority", "normal", FAST_IMAGE_PRIORITY_MAP, source);
     }
 
